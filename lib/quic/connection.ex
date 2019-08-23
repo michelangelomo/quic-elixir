@@ -66,10 +66,10 @@ defmodule QUIC.Connection do
     - port: The port which the socket will be created on.
     - opts: A list of options that will be passed to the udp socket.
   """
-  @spec open(pid, integer) :: term
-  @spec open(pid, integer, [any]) :: term
-  def open(pid, port, opts \\ []) do
-    GenServer.call(pid, {:open, port, opts})
+  @spec open(integer) :: term
+  @spec open(integer, [any]) :: term
+  def open(port, opts \\ []) do
+    GenServer.call(:connection, {:open, port, opts})
   end
 
   @doc """
@@ -82,9 +82,9 @@ defmodule QUIC.Connection do
     - port: The port of the socket.
     - payload: The payload to send.
   """
-  @spec send(pid, {integer, integer, integer, integer}, integer, term) :: :ok
-  def send(pid, address, port, payload) do
-    GenServer.cast(pid, {:send, address, port, payload})
+  @spec send(String.t(), integer, term) :: :ok
+  def send(address, port, payload) do
+    GenServer.cast(:connection, {:send, address, port, payload})
   end
 
   @doc """
@@ -94,10 +94,10 @@ defmodule QUIC.Connection do
 
     - pid: The pid for the QUIC.Connection process.
   """
-  @spec close(pid) :: tuple
-  def close(pid) when is_pid(pid) do
-    Logger.info("Closing connection with pid: #{inspect(pid)}")
-    GenServer.call(pid, :close)
+  @spec close() :: tuple
+  def close() do
+    Logger.info("Closing connection with pid: #{inspect(self)}")
+    GenServer.call(:connection, :close)
   end
 
   ## GenServer callbacks
@@ -118,7 +118,7 @@ defmodule QUIC.Connection do
   end
 
   @doc false
-  def handle_cast({:send, address, port, packet}, _from, state) do
+  def handle_cast({:send, address, port, packet}, state) do
     if state.socket do
       :gen_udp.send(state.socket, address, port, packet)
       {:noreply, state}
